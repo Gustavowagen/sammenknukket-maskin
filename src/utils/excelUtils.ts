@@ -1,0 +1,248 @@
+import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import type { NicknameWithLine } from '../types';
+
+/**
+ * Read an Excel file and return a workbook
+ */
+export const readExcelFile = (file: File): Promise<XLSX.WorkBook> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target?.result;
+        const wb = XLSX.read(data, { type: 'binary' });
+        resolve(wb);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsBinaryString(file);
+  });
+};
+
+/**
+ * Read name file and extract nickname to real name mapping
+ * Looks for "Player overview" sheet with Nick and Name columns
+ */
+export const readNameFile = async (file: File): Promise<Map<string, string>> => {
+  const workbook = await readExcelFile(file);
+  const targetSheetName = 'Player overview';
+  
+  // Check if the target sheet exists
+  if (!workbook.SheetNames.includes(targetSheetName)) {
+    throw new Error(`Sheet "${targetSheetName}" not found in the name file.`);
+  }
+  
+  const worksheet = workbook.Sheets[targetSheetName];
+  
+  // Convert sheet to JSON with first row as headers
+  const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+  
+  // Create mapping from Nick to Name
+  const nameMapping = new Map<string, string>();
+  
+  jsonData.forEach((row: any) => {
+    const nick = row['Nick'] || row['nick'] || row['NICK'];
+    const name = row['Name'] || row['name'] || row['NAME'];
+    
+    if (nick && name) {
+      // Store with lowercase key for case-insensitive lookup
+      nameMapping.set(String(nick).toLowerCase(), String(name));
+    }
+  });
+  
+  return nameMapping;
+};
+
+/**
+ * Filter Excel workbook based on nicknames
+ * - Only processes the "Club Member Balance" sheet
+ * - Removes first 3 rows
+ * - Keeps only columns K and L
+ * - Filters rows where column K contains any of the provided nicknames (case-insensitive partial match)
+ * - Adds "Name" column with real name from nameMapping
+ * - Adds "Has Line" column (Yes/No)
+ * - Adds "Profit/Loss" column (L - line if line exists, otherwise just L)
+ */
+export const filterWorkbookByNicknames = (
+  workbook: XLSX.WorkBook,
+  nicknames: NicknameWithLine[],
+  nameMapping: Map<string, string> = new Map()
+): XLSX.WorkBook => {
+  const newWorkbook = XLSX.utils.book_new();
+  const targetSheetName = 'Club Member Balance';
+
+  // Check if the target sheet exists
+  if (!workbook.SheetNames.includes(targetSheetName)) {
+    throw new Error(`Sheet "${targetSheetName}" not found in the uploaded file.`);
+  }
+
+  const worksheet = workbook.Sheets[targetSheetName];
+  
+  // Convert sheet to JSON for easier processing
+  const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { 
+    header: 1,
+    defval: '' 
+  });
+
+  // If no nicknames provided, return empty workbook
+  if (nicknames.length === 0) {
+    const emptySheet = XLSX.utils.aoa_to_sheet([]);
+    XLSX.utils.book_append_sheet(newWorkbook, emptySheet, targetSheetName);
+    return newWorkbook;
+  }
+
+  // Remove first 3 rows
+  const dataWithoutFirstThreeRows = jsonData.slice(3);
+
+  // Filter and keep only columns K (index 10) and L (index 11), plus add new columns
+  const positiveData: any[][] = [];
+  const negativeData: any[][] = [];
+
+  dataWithoutFirstThreeRows.forEach((row) => {
+    const columnK = row[10] ? String(row[10]).toLowerCase() : '';
+    const columnL = row[11] !== undefined ? row[11] : 0;
+
+    // Check if any nickname is contained in column K (case-insensitive)
+    const matchingNickname = nicknames.find(nicknameObj => 
+      columnK.includes(nicknameObj.nickname.toLowerCase())
+    );
+
+    if (matchingNickname) {
+      const hasLine = matchingNickname.line !== undefined;
+      const hasLineValue = hasLine ? 'Yes' : 'No';
+      const lineAmount = matchingNickname.line !== undefined ? matchingNickname.line : '';
+      
+      // The actual nickname from the Excel file (column K)
+      const actualNickname = String(row[10]);
+      
+      // Get real name from mapping (case-insensitive lookup)
+      // Try both the actual nickname from Excel and the user-entered nickname
+      const realName = nameMapping.get(actualNickname.toLowerCase()) || 
+                       nameMapping.get(matchingNickname.nickname.toLowerCase()) || '';
+      
+      // Calculate profit/loss
+      let profitLoss: number;
+      if (hasLine && matchingNickname.line !== undefined) {
+        profitLoss = Number(columnL) - matchingNickname.line;
+      } else {
+        profitLoss = Number(columnL);
+      }
+
+      // Round down to integer (floor for positive, ceil for negative to round towards zero)
+      profitLoss = profitLoss >= 0 ? Math.floor(profitLoss) : Math.ceil(profitLoss);
+
+      // Create message based on profit/loss
+      let message: string;
+      if (profitLoss < 0) {
+        message = `Hei🙂 Saldo er ${profitLoss}, mer info kommer`;
+      } else {
+        message = `Hei🙂 Saldo er ${profitLoss}, hva vil du gjøre?`;
+      }
+
+      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, message];
+
+      // Split into positive and negative arrays
+      if (profitLoss >= 0) {
+        positiveData.push(rowData);
+      } else {
+        negativeData.push(rowData);
+      }
+    }
+  });
+
+  // Sort both arrays by profit/loss (highest first)
+  positiveData.sort((a, b) => b[5] - a[5]);
+  negativeData.sort((a, b) => b[5] - a[5]);
+
+  // Add headers
+  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Message'];
+  
+  // Combine data with headers and spacing
+  const combinedData = [
+    headers,
+    ...positiveData,
+    [], // Empty row for spacing
+    [], // Empty row for spacing
+    headers,
+    ...negativeData
+  ];
+
+  // Create new worksheet from filtered data
+  const newWorksheet = XLSX.utils.aoa_to_sheet(combinedData);
+  XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, targetSheetName);
+
+  return newWorkbook;
+};
+
+/**
+ * Generate and download Excel file with styling
+ */
+export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: string): Promise<void> => {
+  // Create a new ExcelJS workbook
+  const excelWorkbook = new ExcelJS.Workbook();
+  
+  // Get the first sheet from XLSX workbook
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  
+  // Add worksheet to ExcelJS workbook
+  const excelWorksheet = excelWorkbook.addWorksheet(sheetName);
+  
+  // Add data to worksheet
+  data.forEach((row, rowIndex) => {
+    const excelRow = excelWorksheet.addRow(row);
+    
+    // Style header rows (first row and the row after the spacing)
+    const isHeaderRow = rowIndex === 0 || (row.length > 0 && row[0] === 'Nickname');
+    
+    excelRow.eachCell((cell) => {
+      // Add borders to all cells
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      
+      // Make headers bold
+      if (isHeaderRow) {
+        cell.font = { bold: true, size: 12 };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E7FF' }
+        };
+      }
+    });
+  });
+  
+  // Auto-fit columns based on content
+  excelWorksheet.columns.forEach((column) => {
+    let maxLength = 0;
+    column.eachCell?.({ includeEmpty: true }, (cell) => {
+      const columnLength = cell.value ? String(cell.value).length : 10;
+      if (columnLength > maxLength) {
+        maxLength = columnLength;
+      }
+    });
+    column.width = maxLength < 10 ? 10 : maxLength + 2;
+  });
+  
+  // Generate Excel file
+  const buffer = await excelWorkbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  
+  // Create download link
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
