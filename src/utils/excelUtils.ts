@@ -142,7 +142,8 @@ export const filterWorkbookByNicknames = (
         message = `Hei🙂 Saldo er ${profitLoss}, hva vil du gjøre?`;
       }
 
-      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, message];
+      // Add empty columns for user input: Sendt Pm, Satt opp, Claima chips, Purra, Ruller
+      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, '', '', '', '', '', message];
 
       // Split into positive and negative arrays
       if (profitLoss >= 0) {
@@ -157,17 +158,33 @@ export const filterWorkbookByNicknames = (
   positiveData.sort((a, b) => b[5] - a[5]);
   negativeData.sort((a, b) => b[5] - a[5]);
 
-  // Add headers
-  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Message'];
+  // Add headers with new columns
+  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller', 'Message'];
   
-  // Combine data with headers and spacing
+  // Create the transfer table headers and empty rows
+  const transferTableHeaders = ['Avsender', 'til', 'Mottaker'];
+  const emptyTransferRows = Array(10).fill(['', '', '']); // 10 empty rows for user input
+  
+  // Combine data with headers and spacing - 10 empty rows before transfer table
   const combinedData = [
     headers,
     ...positiveData,
     [], // Empty row for spacing
     [], // Empty row for spacing
     headers,
-    ...negativeData
+    ...negativeData,
+    [], // Empty row 1
+    [], // Empty row 2
+    [], // Empty row 3
+    [], // Empty row 4
+    [], // Empty row 5
+    [], // Empty row 6
+    [], // Empty row 7
+    [], // Empty row 8
+    [], // Empty row 9
+    [], // Empty row 10
+    transferTableHeaders,
+    ...emptyTransferRows
   ];
 
   // Create new worksheet from filtered data
@@ -196,17 +213,34 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
   data.forEach((row, rowIndex) => {
     const excelRow = excelWorksheet.addRow(row);
     
-    // Style header rows (first row and the row after the spacing)
-    const isHeaderRow = rowIndex === 0 || (row.length > 0 && row[0] === 'Nickname');
+    // Style header rows (first row, rows with 'Nickname', and rows with 'Avsender')
+    const isHeaderRow = rowIndex === 0 || 
+                        (row.length > 0 && row[0] === 'Nickname') ||
+                        (row.length > 0 && row[0] === 'Avsender');
+    
+    // Check if this is part of the transfer table (row with 'Avsender' or rows after it)
+    const transferTableStartIndex = data.findIndex(r => r.length > 0 && r[0] === 'Avsender');
+    const isTransferTableRow = transferTableStartIndex !== -1 && rowIndex >= transferTableStartIndex;
+    
+    // Check if this is one of the 2 rows immediately before the transfer table
+    const isSeparatorRow = transferTableStartIndex !== -1 && 
+                          rowIndex >= transferTableStartIndex - 2 && 
+                          rowIndex < transferTableStartIndex;
     
     excelRow.eachCell((cell) => {
-      // Add borders to all cells
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
+      // Remove borders from the 2 separator rows before transfer table
+      if (isSeparatorRow) {
+        cell.border = {};
+      } 
+      // Add borders to transfer table rows and main table rows
+      else if (isTransferTableRow || !isSeparatorRow) {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      }
       
       // Make headers bold
       if (isHeaderRow) {
