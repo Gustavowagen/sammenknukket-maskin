@@ -227,31 +227,68 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
                           rowIndex >= transferTableStartIndex - 2 && 
                           rowIndex < transferTableStartIndex;
     
-    excelRow.eachCell((cell) => {
-      // Remove borders from the 2 separator rows before transfer table
+    // Main table has 12 columns, transfer table has 3 columns
+    const mainTableColumnCount = 12;
+    const transferTableColumnCount = 3;
+    
+    // Process all cells in the row
+    for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
+      const cell = excelRow.getCell(colNumber);
+      
+      // Remove borders and fill from the 2 separator rows before transfer table
       if (isSeparatorRow) {
         cell.border = {};
+        (cell as any).fill = null;
       } 
-      // Add borders to transfer table rows and main table rows
-      else if (isTransferTableRow || !isSeparatorRow) {
+      // For transfer table rows, only add borders to first 3 columns (Avsender, til, Mottaker)
+      else if (isTransferTableRow && colNumber <= transferTableColumnCount) {
         cell.border = {
           top: { style: 'thin' },
           left: { style: 'thin' },
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
+        
+        // Make headers bold for first 3 columns
+        if (isHeaderRow) {
+          cell.font = { bold: true, size: 12 };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E7FF' }
+          };
+        }
       }
-      
-      // Make headers bold
-      if (isHeaderRow) {
-        cell.font = { bold: true, size: 12 };
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFE0E7FF' }
+      // For transfer table rows beyond column 3, remove borders and fill
+      else if (isTransferTableRow && colNumber > transferTableColumnCount) {
+        cell.border = {};
+        (cell as any).fill = null;
+      }
+      // Add borders to main table rows (only for columns 1-12)
+      else if (!isSeparatorRow && !isTransferTableRow && colNumber <= mainTableColumnCount) {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
         };
+        
+        // Make headers bold
+        if (isHeaderRow) {
+          cell.font = { bold: true, size: 12 };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E7FF' }
+          };
+        }
       }
-    });
+      // Remove borders and fill for main table rows beyond column 12
+      else if (!isSeparatorRow && !isTransferTableRow && colNumber > mainTableColumnCount) {
+        cell.border = {};
+        (cell as any).fill = null;
+      }
+    }
   });
   
   // Auto-fit columns based on content

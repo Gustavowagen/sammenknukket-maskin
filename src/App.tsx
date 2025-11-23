@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import './App.css'
 import FileUpload from './components/FileUpload'
@@ -9,7 +9,6 @@ import type { NicknameWithLine } from './types'
 
 function App() {
   const [file, setFile] = useState<File | null>(null)
-  const [nameFile, setNameFile] = useState<File | null>(null)
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [nameMapping, setNameMapping] = useState<Map<string, string>>(new Map())
   const [filteredWorkbook, setFilteredWorkbook] = useState<XLSX.WorkBook | null>(null)
@@ -19,6 +18,31 @@ function App() {
 
   // Memoize ParticlesBackground to prevent re-renders
   const particles = useMemo(() => <ParticlesBackground />, []);
+
+  // Auto-load default name file on component mount
+  useEffect(() => {
+    const loadDefaultNameFile = async () => {
+      try {
+        const response = await fetch('/Knekt overview (2).xlsx');
+        if (!response.ok) {
+          throw new Error('Failed to fetch default name file');
+        }
+        const blob = await response.blob();
+        const file = new File([blob], 'Knekt overview (2).xlsx', {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        
+        const mapping = await readNameFile(file);
+        setNameMapping(mapping);
+        console.log('Default name file loaded successfully');
+      } catch (error) {
+        console.error('Error loading default name file:', error);
+        alert('Failed to load default name file. Please refresh the page.');
+      }
+    };
+
+    loadDefaultNameFile();
+  }, []);
 
   const handleFileUpload = async (uploadedFile: File) => {
     setFile(uploadedFile)
@@ -31,18 +55,6 @@ function App() {
     } catch (error) {
       console.error('Error reading file:', error)
       alert('Error reading Excel file. Please make sure it is a valid Excel file.')
-    }
-  }
-
-  const handleNameFileUpload = async (uploadedFile: File) => {
-    setNameFile(uploadedFile)
-    
-    try {
-      const mapping = await readNameFile(uploadedFile)
-      setNameMapping(mapping)
-    } catch (error) {
-      console.error('Error reading name file:', error)
-      alert('Error reading name file. Please check that it has a "Player overview" sheet with Nick and Name columns.')
     }
   }
 
@@ -77,26 +89,12 @@ function App() {
       <div className="app-container">
         <h1>Excel Nickname Filter</h1>
         
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '2rem' }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', textAlign: 'center' }}>Context File</h3>
-            <FileUpload 
-              file={file} 
-              onFileUpload={handleFileUpload} 
-              label="Choose Context File"
-              id="context-file"
-            />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', textAlign: 'center' }}>Name File</h3>
-            <FileUpload 
-              file={nameFile} 
-              onFileUpload={handleNameFileUpload} 
-              label="Choose Name File"
-              id="name-file"
-            />
-          </div>
-        </div>
+        <FileUpload 
+          file={file} 
+          onFileUpload={handleFileUpload} 
+          label="Choose Context File"
+          id="context-file"
+        />
 
         {file && !isFiltered && (
           <>
