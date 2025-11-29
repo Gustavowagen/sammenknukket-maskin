@@ -142,8 +142,7 @@ export const filterWorkbookByNicknames = (
         message = `Hei🙂 Saldo er ${profitLoss}, hva vil du gjøre?`;
       }
 
-      // Add empty columns for user input: Sendt Pm, Satt opp, Claima chips, Purra, Ruller
-      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, '', '', '', '', '', message];
+      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, message];
 
       // Split into positive and negative arrays
       if (profitLoss >= 0) {
@@ -158,12 +157,12 @@ export const filterWorkbookByNicknames = (
   positiveData.sort((a, b) => b[5] - a[5]);
   negativeData.sort((a, b) => b[5] - a[5]);
 
-  // Add headers with new columns
-  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller', 'Message'];
+  // Add headers for main table
+  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Message'];
   
-  // Create the transfer table headers and empty rows
-  const transferTableHeaders = ['Avsender', 'til', 'Mottaker'];
-  const emptyTransferRows = Array(10).fill(['', '', '']); // 10 empty rows for user input
+  // Create the transfer table headers and empty rows with the 5 additional columns
+  const transferTableHeaders = ['Avsender', 'til', 'Mottaker', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller'];
+  const emptyTransferRows = Array(10).fill(['', '', '', '', '', '', '', '']); // 10 empty rows for user input
   
   // Combine data with headers and spacing - 10 empty rows before transfer table
   const combinedData = [
@@ -227,9 +226,9 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
                           rowIndex >= transferTableStartIndex - 2 && 
                           rowIndex < transferTableStartIndex;
     
-    // Main table has 12 columns, transfer table has 3 columns
-    const mainTableColumnCount = 12;
-    const transferTableColumnCount = 3;
+    // Main table has 7 columns, transfer table has 8 columns
+    const mainTableColumnCount = 7;
+    const transferTableColumnCount = 8;
     
     // Process all cells in the row
     for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
