@@ -161,8 +161,8 @@ export const filterWorkbookByNicknames = (
   const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Message'];
   
   // Create the transfer table headers and empty rows with the 5 additional columns
-  const transferTableHeaders = ['Avsender', 'til', 'Mottaker', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller'];
-  const emptyTransferRows = Array(10).fill(['', '', '', '', '', '', '', '']); // 10 empty rows for user input
+  const transferTableHeaders = ['Avsender', 'til', 'Mottaker', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller', 'Tar ut x'];
+  const emptyTransferRows = Array(10).fill(['', '', '', '', '', '', '', '', '']); // 10 empty rows for user input
   
   // Combine data with headers and spacing - 10 empty rows before transfer table
   const combinedData = [
@@ -226,9 +226,9 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
                           rowIndex >= transferTableStartIndex - 2 && 
                           rowIndex < transferTableStartIndex;
     
-    // Main table has 7 columns, transfer table has 8 columns
+    // Main table has 7 columns, transfer table has 9 columns
     const mainTableColumnCount = 7;
-    const transferTableColumnCount = 8;
+    const transferTableColumnCount = 9;
     
     // Process all cells in the row
     for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
