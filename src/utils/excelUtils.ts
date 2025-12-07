@@ -142,7 +142,7 @@ export const filterWorkbookByNicknames = (
         message = `Hei🙂 Saldo er ${profitLoss}, hva vil du gjøre?`;
       }
 
-      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, message];
+      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, '', '', '', '', '', message];
 
       // Split into positive and negative arrays
       if (profitLoss >= 0) {
@@ -158,11 +158,11 @@ export const filterWorkbookByNicknames = (
   negativeData.sort((a, b) => b[5] - a[5]);
 
   // Add headers for main table
-  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Message'];
+  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Pm', 'uttak sum', 'ruller', 'Claima chips', 'satt opp', 'Message'];
   
-  // Create the transfer table headers and empty rows with the 5 additional columns
-  const transferTableHeaders = ['Avsender', 'til', 'Mottaker', 'Sendt Pm', 'Satt opp', 'Claima chips', 'Purra', 'Ruller', 'Tar ut x'];
-  const emptyTransferRows = Array(10).fill(['', '', '', '', '', '', '', '', '']); // 10 empty rows for user input
+  // Create the transfer table headers and empty rows
+  const transferTableHeaders = ['Avsender', 'sum', 'Mottaker', 'bekreftet', 'purra'];
+  const emptyTransferRows = Array(10).fill(['', '', '', '', '']); // 10 empty rows for user input
   
   // Combine data with headers and spacing - 10 empty rows before transfer table
   const combinedData = [
@@ -226,9 +226,9 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
                           rowIndex >= transferTableStartIndex - 2 && 
                           rowIndex < transferTableStartIndex;
     
-    // Main table has 7 columns, transfer table has 9 columns
-    const mainTableColumnCount = 7;
-    const transferTableColumnCount = 9;
+    // Main table has 12 columns, transfer table has 5 columns
+    const mainTableColumnCount = 12;
+    const transferTableColumnCount = 5;
     
     // Process all cells in the row
     for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
