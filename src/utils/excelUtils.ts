@@ -183,7 +183,15 @@ export const filterWorkbookByNicknames = (
     [], // Empty row 9
     [], // Empty row 10
     transferTableHeaders,
-    ...emptyTransferRows
+    ...emptyTransferRows,
+    [], // Spacing between tables
+    [], // Spacing between tables
+    transferTableHeaders,
+    ...emptyTransferRows.map(() => ['', '', '', '', '']), // Second table
+    [], // Spacing between tables
+    [], // Spacing between tables
+    transferTableHeaders,
+    ...emptyTransferRows.map(() => ['', '', '', '', '']) // Third table
   ];
 
   // Create new worksheet from filtered data
@@ -217,14 +225,38 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
                         (row.length > 0 && row[0] === 'Nickname') ||
                         (row.length > 0 && row[0] === 'Avsender');
     
-    // Check if this is part of the transfer table (row with 'Avsender' or rows after it)
-    const transferTableStartIndex = data.findIndex(r => r.length > 0 && r[0] === 'Avsender');
-    const isTransferTableRow = transferTableStartIndex !== -1 && rowIndex >= transferTableStartIndex;
+    // Find all transfer table header rows
+    const transferTableIndices: number[] = [];
+    data.forEach((r, idx) => {
+      if (r.length > 0 && r[0] === 'Avsender') {
+        transferTableIndices.push(idx);
+      }
+    });
     
-    // Check if this is one of the 2 rows immediately before the transfer table
-    const isSeparatorRow = transferTableStartIndex !== -1 && 
-                          rowIndex >= transferTableStartIndex - 2 && 
-                          rowIndex < transferTableStartIndex;
+    // Check if this is part of any transfer table (row with 'Avsender' or 10 rows after it)
+    let isTransferTableRow = false;
+    transferTableIndices.forEach(startIdx => {
+      if (rowIndex >= startIdx && rowIndex < startIdx + 11) { // Header + 10 data rows
+        isTransferTableRow = true;
+      }
+    });
+    
+    // Check if this is a separator row (2 rows before first transfer table OR 2 empty rows between transfer tables)
+    const firstTransferTableIndex = transferTableIndices.length > 0 ? transferTableIndices[0] : -1;
+    let isSeparatorRow = firstTransferTableIndex !== -1 && 
+                          rowIndex >= firstTransferTableIndex - 2 && 
+                          rowIndex < firstTransferTableIndex;
+    
+    // Also check if it's between transfer tables (empty rows between them)
+    transferTableIndices.forEach((startIdx, tableIdx) => {
+      if (tableIdx < transferTableIndices.length - 1) {
+        const currentTableEnd = startIdx + 11; // Header + 10 rows
+        const nextTableStart = transferTableIndices[tableIdx + 1];
+        if (rowIndex >= currentTableEnd && rowIndex < nextTableStart) {
+          isSeparatorRow = true;
+        }
+      }
+    });
     
     // Main table has 12 columns, transfer table has 5 columns
     const mainTableColumnCount = 12;
