@@ -61,7 +61,7 @@ export const readNameFile = async (file: File): Promise<Map<string, string>> => 
  * - Only processes the "Club Member Balance" sheet
  * - Removes first 3 rows
  * - Keeps only columns K and L
- * - Filters rows where column K contains any of the provided nicknames (case-insensitive partial match)
+ * - Filters rows where column K starts with any of the provided nicknames (case-insensitive prefix match)
  * - Adds "Name" column with real name from nameMapping
  * - Adds "Has Line" column (Yes/No)
  * - Adds "Profit/Loss" column (L - line if line exists, otherwise just L)
@@ -105,9 +105,9 @@ export const filterWorkbookByNicknames = (
     const columnK = row[10] ? String(row[10]).toLowerCase() : '';
     const columnL = row[11] !== undefined ? row[11] : 0;
 
-    // Check if any nickname is contained in column K (case-insensitive)
+    // Check if any nickname matches the start of column K (case-insensitive)
     const matchingNickname = nicknames.find(nicknameObj => 
-      columnK.includes(nicknameObj.nickname.toLowerCase())
+      columnK.startsWith(nicknameObj.nickname.toLowerCase())
     );
 
     if (matchingNickname) {
