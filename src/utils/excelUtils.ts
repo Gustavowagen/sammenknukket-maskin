@@ -262,7 +262,6 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
     
     // Main table has 11 columns, transfer table has 5 columns per table (3 tables with 3 empty cells between = 23 columns total)
     const mainTableColumnCount = 11;
-    const transferTableColumnCount = 23; // 5 + 3 + 5 + 3 + 5 = 23
     
     // Process all cells in the row
     for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
