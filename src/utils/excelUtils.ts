@@ -134,15 +134,7 @@ export const filterWorkbookByNicknames = (
       // Round down to integer (floor for positive, ceil for negative to round towards zero)
       profitLoss = profitLoss >= 0 ? Math.floor(profitLoss) : Math.ceil(profitLoss);
 
-      // Create message based on profit/loss
-      let message: string;
-      if (profitLoss < 0) {
-        message = `Hei🙂 Saldo er ${profitLoss}, mer info kommer`;
-      } else {
-        message = `Hei🙂 Saldo er ${profitLoss}, hva vil du gjøre?`;
-      }
-
-      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, '', '', '', '', '', message];
+      const rowData = [row[10], realName, lineAmount, columnL, hasLineValue, profitLoss, '', '', '', '', ''];
 
       // Split into positive and negative arrays
       if (profitLoss >= 0) {
@@ -157,20 +149,38 @@ export const filterWorkbookByNicknames = (
   positiveData.sort((a, b) => b[5] - a[5]);
   negativeData.sort((a, b) => b[5] - a[5]);
 
-  // Add headers for main table
-  const headers = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Pm', 'uttak sum', 'ruller', 'Claima chips', 'satt opp', 'Message'];
+  // Add headers for main tables
+  const positiveHeaders = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Pm', 'uttak sum', 'ruller', 'Gitt chips', 'satt opp'];
+  const negativeHeaders = ['Nickname', 'Name', 'Line Amount', 'Chips', 'Has Line', 'Profit/Loss', 'Pm', 'uttak sum', 'ruller', 'Claima chips', 'satt opp'];
   
   // Create the transfer table headers and empty rows
   const transferTableHeaders = ['Avsender', 'sum', 'Mottaker', 'bekreftet', 'purra'];
   const emptyTransferRows = Array(10).fill(['', '', '', '', '']); // 10 empty rows for user input
   
+  // Create horizontal arrangement of 3 transfer tables with 3 empty cells between each
+  const transferTableHeader = [
+    ...transferTableHeaders,
+    '', '', '', // 3 empty cells
+    ...transferTableHeaders,
+    '', '', '', // 3 empty cells
+    ...transferTableHeaders
+  ];
+  
+  const transferTableRows = emptyTransferRows.map(() => [
+    '', '', '', '', '', // First table columns
+    '', '', '', // 3 empty cells
+    '', '', '', '', '', // Second table columns
+    '', '', '', // 3 empty cells
+    '', '', '', '', ''  // Third table columns
+  ]);
+  
   // Combine data with headers and spacing - 10 empty rows before transfer table
   const combinedData = [
-    headers,
+    positiveHeaders,
     ...positiveData,
     [], // Empty row for spacing
     [], // Empty row for spacing
-    headers,
+    negativeHeaders,
     ...negativeData,
     [], // Empty row 1
     [], // Empty row 2
@@ -182,16 +192,8 @@ export const filterWorkbookByNicknames = (
     [], // Empty row 8
     [], // Empty row 9
     [], // Empty row 10
-    transferTableHeaders,
-    ...emptyTransferRows,
-    [], // Spacing between tables
-    [], // Spacing between tables
-    transferTableHeaders,
-    ...emptyTransferRows.map(() => ['', '', '', '', '']), // Second table
-    [], // Spacing between tables
-    [], // Spacing between tables
-    transferTableHeaders,
-    ...emptyTransferRows.map(() => ['', '', '', '', '']) // Third table
+    transferTableHeader,
+    ...transferTableRows
   ];
 
   // Create new worksheet from filtered data
@@ -258,9 +260,9 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
       }
     });
     
-    // Main table has 12 columns, transfer table has 5 columns
-    const mainTableColumnCount = 12;
-    const transferTableColumnCount = 5;
+    // Main table has 11 columns, transfer table has 5 columns per table (3 tables with 3 empty cells between = 23 columns total)
+    const mainTableColumnCount = 11;
+    const transferTableColumnCount = 23; // 5 + 3 + 5 + 3 + 5 = 23
     
     // Process all cells in the row
     for (let colNumber = 1; colNumber <= Math.max(excelRow.cellCount, 20); colNumber++) {
@@ -271,8 +273,12 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
         cell.border = {};
         (cell as any).fill = null;
       } 
-      // For transfer table rows, only add borders to first 3 columns (Avsender, til, Mottaker)
-      else if (isTransferTableRow && colNumber <= transferTableColumnCount) {
+      // For transfer table rows, add borders to the appropriate columns (5 cols, 3 empty, 5 cols, 3 empty, 5 cols)
+      else if (isTransferTableRow && (
+        (colNumber >= 1 && colNumber <= 5) ||    // First table
+        (colNumber >= 9 && colNumber <= 13) ||   // Second table (after 3 empty cells)
+        (colNumber >= 17 && colNumber <= 21)     // Third table (after 3 more empty cells)
+      )) {
         cell.border = {
           top: { style: 'thin' },
           left: { style: 'thin' },
@@ -290,8 +296,12 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
           };
         }
       }
-      // For transfer table rows beyond column 3, remove borders and fill
-      else if (isTransferTableRow && colNumber > transferTableColumnCount) {
+      // For transfer table rows in the spacing columns, remove borders and fill
+      else if (isTransferTableRow && (
+        (colNumber >= 6 && colNumber <= 8) ||    // Space between table 1 and 2
+        (colNumber >= 14 && colNumber <= 16) ||  // Space between table 2 and 3
+        colNumber > 21                            // After table 3
+      )) {
         cell.border = {};
         (cell as any).fill = null;
       }
@@ -314,7 +324,7 @@ export const downloadExcelFile = async (workbook: XLSX.WorkBook, filename: strin
           };
         }
       }
-      // Remove borders and fill for main table rows beyond column 12
+      // Remove borders and fill for main table rows beyond column 11
       else if (!isSeparatorRow && !isTransferTableRow && colNumber > mainTableColumnCount) {
         cell.border = {};
         (cell as any).fill = null;

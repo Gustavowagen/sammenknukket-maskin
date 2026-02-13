@@ -23,12 +23,12 @@ function App() {
   useEffect(() => {
     const loadDefaultNameFile = async () => {
       try {
-        const response = await fetch('/Knekt overview (2).xlsx');
+        const response = await fetch('/Knekt overview.xlsx');
         if (!response.ok) {
           throw new Error('Failed to fetch default name file');
         }
         const blob = await response.blob();
-        const file = new File([blob], 'Knekt overview (2).xlsx', {
+        const file = new File([blob], 'Knekt overview.xlsx', {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         });
         
