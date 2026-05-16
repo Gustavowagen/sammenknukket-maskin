@@ -87,7 +87,7 @@ const NicknameInput: React.FC<NicknameInputProps> = ({ nicknames, onNicknamesCha
       <textarea
         value={textValue}
         onChange={handleTextChange}
-        placeholder="gus/5&#10;febe&#10;dstraume/4.5&#10;abood"
+        placeholder="gustavo/5&#10;carlos&#10;conrado/4.5&#10;alberto"
         className="nickname-textarea"
         rows={6}
       />
