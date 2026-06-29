@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FileUpload.css';
 
 interface FileUploadProps {
@@ -8,16 +8,37 @@ interface FileUploadProps {
   id?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ 
-  file, 
-  onFileUpload, 
+const FileUpload: React.FC<FileUploadProps> = ({
+  file,
+  onFileUpload,
   label = 'Choose Excel File',
   id = 'file-input'
 }) => {
+  const [isDragging, setIsDragging] = useState(false);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
       onFileUpload(uploadedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && /\.(xlsx|xls)$/i.test(droppedFile.name)) {
+      onFileUpload(droppedFile);
     }
   };
 
@@ -29,7 +50,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onChange={handleFileChange}
         id={id}
       />
-      <label htmlFor={id} className="file-label">
+      <label
+        htmlFor={id}
+        className={`file-label${isDragging ? ' file-label--dragging' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {file ? file.name : label}
       </label>
     </div>

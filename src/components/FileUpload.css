@@ -50,3 +50,12 @@
 .file-label:active {
   transform: translateY(-1px);
 }
+
+.file-label--dragging {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-style: solid;
+  border-color: #667eea;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
